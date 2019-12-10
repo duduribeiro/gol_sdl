@@ -7,6 +7,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::{Window, WindowContext};
 use sdl2::render::{Canvas, Texture, TextureCreator};
+use std::{thread, time};
 
 pub const SQUARE_SIZE: u32 = 5;
 pub const PLAYGROUND_WIDTH: u32 = 128;
@@ -175,8 +176,9 @@ pub fn main() -> Result<(), String> {
 
         canvas.present();
         if let game_of_life::State::Playing = game.state() {
+            let ten_millis = time::Duration::from_millis(10);
+            thread::sleep(ten_millis);
             universe.tick();
-            frame += 1;
         };
     }
 
