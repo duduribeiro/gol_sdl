@@ -1,19 +1,18 @@
 extern crate sdl2;
+extern crate gol;
 
 use sdl2::rect::{Point, Rect};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::mouse::MouseButton;
 use sdl2::keyboard::Keycode;
 use sdl2::video::{Window, WindowContext};
 use sdl2::render::{Canvas, Texture, TextureCreator};
-use crate::game_of_life::{SQUARE_SIZE, PLAYGROUND_WIDTH, PLAYGROUND_HEIGHT};
+
+pub const SQUARE_SIZE: u32 = 5;
+pub const PLAYGROUND_WIDTH: u32 = 128;
+pub const PLAYGROUND_HEIGHT: u32 = 128;
 
 mod game_of_life {
-    pub const SQUARE_SIZE: u32 = 16;
-    pub const PLAYGROUND_WIDTH: u32 = 49;
-    pub const PLAYGROUND_HEIGHT: u32 = 40;
-
     #[derive(Copy, Clone)]
     pub enum State {
         Paused,
@@ -21,45 +20,13 @@ mod game_of_life {
     }
 
     pub struct GameOfLife {
-        playground: [bool; (PLAYGROUND_WIDTH*PLAYGROUND_HEIGHT) as usize],
         state: State,
     }
 
     impl GameOfLife {
         pub fn new() -> GameOfLife {
-            let mut playground = [false; (PLAYGROUND_WIDTH * PLAYGROUND_HEIGHT) as usize];
-
-            // let's make a nice default pattern !
-            for i in 1..(PLAYGROUND_HEIGHT-1) {
-                playground[(1 + i* PLAYGROUND_WIDTH) as usize] = true;
-                playground[((PLAYGROUND_WIDTH-2) + i* PLAYGROUND_WIDTH) as usize] = true;
-            }
-            for j in 2..(PLAYGROUND_WIDTH-2) {
-                playground[(PLAYGROUND_WIDTH + j) as usize] = true;
-                playground[((PLAYGROUND_HEIGHT-2)*PLAYGROUND_WIDTH + j) as usize] = true;
-            }
-
             GameOfLife {
-                playground: playground,
                 state: State::Paused,
-            }
-        }
-
-        pub fn get(&self, x: i32, y: i32) -> Option<bool> {
-            if x >= 0 && y >= 0 &&
-               (x as u32) < PLAYGROUND_WIDTH && (y as u32) < PLAYGROUND_HEIGHT {
-                Some(self.playground[(x as u32 + (y as u32)* PLAYGROUND_WIDTH) as usize])
-            } else {
-                None
-            }
-        }
-
-        pub fn get_mut(&mut self, x: i32, y: i32) -> Option<&mut bool> {
-            if x >= 0 && y >= 0 &&
-               (x as u32) < PLAYGROUND_WIDTH && (y as u32) < PLAYGROUND_HEIGHT {
-                Some(&mut self.playground[(x as u32 + (y as u32)* PLAYGROUND_WIDTH) as usize])
-            } else {
-                None
             }
         }
 
@@ -72,45 +39,6 @@ mod game_of_life {
 
         pub fn state(&self) -> State {
             self.state
-        }
-
-        pub fn update(&mut self) {
-            let mut new_playground = self.playground;
-            for (u, square) in new_playground.iter_mut().enumerate() {
-                let u = u as u32;
-                let x = u % PLAYGROUND_WIDTH;
-                let y = u / PLAYGROUND_WIDTH;
-                let mut count : u32 = 0;
-                for i in -1..2 {
-                    for j in -1..2 {
-                        if !(i == 0 && j == 0) {
-                            let peek_x : i32 = (x as i32) + i;
-                            let peek_y : i32 = (y as i32) + j;
-                            if let Some(true) = self.get(peek_x, peek_y) {
-                                count += 1;
-                            }
-                        }
-                    }
-                }
-                if count > 3 || count < 2 {
-                    *square = false;
-                } else if count == 3 {
-                    *square = true;
-                } else if count == 2 {
-                    *square = *square;
-                }
-            }
-            self.playground = new_playground;
-        }
-    }
-
-
-
-    impl<'a> IntoIterator for &'a GameOfLife {
-        type Item = &'a bool;
-        type IntoIter = ::std::slice::Iter<'a, bool>;
-        fn into_iter(self) -> ::std::slice::Iter<'a, bool> {
-            self.playground.iter()
         }
     }
 }
@@ -244,45 +172,16 @@ pub fn main() -> Result<(), String> {
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(Keycode::Space), repeat: false, .. } => {
-                    println!("{}", universe);
-
-
                     game.toggle_state();
-                },
-                Event::MouseButtonDown { x, y, mouse_btn: MouseButton::Left, .. } => {
-                    let x = (x as u32) / SQUARE_SIZE;
-                    let y = (y as u32) / SQUARE_SIZE;
-                    match game.get_mut(x as i32, y as i32) {
-                        Some(square) => {*square = !(*square);},
-                        None => unreachable!(),
-                    };
                 },
                 _ => {}
             }
         }
 
-        // update the game loop here
-        if frame >= 30 {
-            game.update();
-            frame = 0;
-        }
-
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        // for i in 0..1960 {
-        //     println!("{}", i); // x: i32
-        //     let square_texture = &square_texture1;
-        //         canvas.copy(square_texture,
-        //                     None,
-        //                     Rect::new(((i % PLAYGROUND_WIDTH) * SQUARE_SIZE) as i32,
-        //                             ((i / PLAYGROUND_WIDTH) * SQUARE_SIZE) as i32,
-        //                             SQUARE_SIZE,
-        //                             SQUARE_SIZE))?;
-        // }
-
         for (i, cell) in universe.get_cells().iter().enumerate() {
-            println!("{} - {}", i, *cell == gol::Cell::Alive);
             let i = i as u32;
             let symbol = if *cell == gol::Cell::Dead { '◻' } else { '◼' };
             let square_texture = if frame >= 15 {
@@ -299,8 +198,6 @@ pub fn main() -> Result<(), String> {
                                     SQUARE_SIZE))?;
             }
         }
-
-        println!("----------");
 
         canvas.present();
         if let game_of_life::State::Playing = game.state() {
