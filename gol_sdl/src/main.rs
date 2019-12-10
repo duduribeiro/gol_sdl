@@ -43,19 +43,17 @@ mod game_of_life {
     }
 }
 
-fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a TextureCreator<WindowContext>) -> Result<(Texture<'a>, Texture<'a>), String> {
+fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a TextureCreator<WindowContext>) -> Result<(Texture<'a>), String> {
     enum TextureColor {
         Yellow,
-        White,
     };
     let mut square_texture1 = texture_creator.create_texture_target(None, SQUARE_SIZE, SQUARE_SIZE).map_err(|e| e.to_string())?;
-    let mut square_texture2 = texture_creator.create_texture_target(None, SQUARE_SIZE, SQUARE_SIZE).map_err(|e| e.to_string())?;
-        // let's change the textures we just created
     {
         let textures = vec![
             (&mut square_texture1, TextureColor::Yellow),
-            (&mut square_texture2, TextureColor::White)
         ];
+
+
         canvas.with_multiple_texture_canvas(textures.iter(), |texture_canvas, user_context| {
             texture_canvas.set_draw_color(Color::RGB(0, 0, 0));
             texture_canvas.clear();
@@ -76,26 +74,6 @@ fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a TextureCr
                         }
                     }
                 },
-                TextureColor::White => {
-                    for i in 0..SQUARE_SIZE {
-                        for j in 0..SQUARE_SIZE {
-                            // drawing pixel by pixel isn't very effective, but we only do it once and store
-                            // the texture afterwards so it's still alright!
-                            if (i+j) % 7 == 0 {
-                                // this doesn't mean anything, there was some trial and error to find
-                                // something that wasn't too ugly
-                                texture_canvas.set_draw_color(Color::RGB(192, 192, 192));
-                                texture_canvas.draw_point(Point::new(i as i32, j as i32))
-                                    .expect("could not draw point");
-                            }
-                            if (i+j*2) % 5 == 0 {
-                                texture_canvas.set_draw_color(Color::RGB(64, 64, 64));
-                                texture_canvas.draw_point(Point::new(i as i32, j as i32))
-                                    .expect("could not draw point");
-                            }
-                        }
-                    }
-                }
             };
             for i in 0..SQUARE_SIZE {
                 for j in 0..SQUARE_SIZE {
@@ -117,7 +95,7 @@ fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a TextureCr
             }
         }).map_err(|e| e.to_string())?;
     }
-    Ok((square_texture1, square_texture2))
+    Ok(square_texture1)
 }
 
 pub fn main() -> Result<(), String> {
@@ -158,7 +136,7 @@ pub fn main() -> Result<(), String> {
     let texture_creator : TextureCreator<_> = canvas.texture_creator();
 
     // Create a "target" texture so that we can use our Renderer with it later
-    let (square_texture1, square_texture2) = dummy_texture(&mut canvas, &texture_creator)?;
+    let (square_texture1) = dummy_texture(&mut canvas, &texture_creator)?;
     let mut game = game_of_life::GameOfLife::new();
     let mut universe = gol::Universe::new();
 
@@ -184,11 +162,7 @@ pub fn main() -> Result<(), String> {
         for (i, cell) in universe.get_cells().iter().enumerate() {
             let i = i as u32;
             let symbol = if *cell == gol::Cell::Dead { '◻' } else { '◼' };
-            let square_texture = if frame >= 15 {
-                &square_texture1
-            } else {
-                &square_texture2
-            };
+            let square_texture = &square_texture1;
             if *cell == gol::Cell::Alive {
                 canvas.copy(square_texture,
                             None,
